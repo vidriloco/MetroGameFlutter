@@ -4,6 +4,7 @@ import 'package:mapbox_gl/mapbox_gl.dart';
 import "routes_list_page.dart";
 import "line-panel.dart";
 import 'package:rxdart/rxdart.dart';
+import 'package:collection/collection.dart';
 
 class MapPage extends StatefulWidget {
   const MapPage({Key? key, required this.title}) : super(key: key);
@@ -23,7 +24,7 @@ class _MapPageState extends State<MapPage> {
   BehaviorSubject<String> childEventsStream = new BehaviorSubject<String>();
 
   Offset dragCanceledAtOffset = Offset(20, 50);
-  Offset dragStartedAtOffset = Offset(50, 50);
+  Offset originPositionOffset = Offset(50, 50);
   bool dragEventCanceled = false;
 
   Widget? mapWidget;
@@ -49,12 +50,29 @@ class _MapPageState extends State<MapPage> {
     return MapboxMap(
       accessToken: token,
       styleString: style,
-      onMapCreated: (controller) {
+      onMapCreated: (controller) async {
         this.mapController = controller;
-        this.mapController?.onSymbolTapped.add((symbol) {
+        this.mapController?.onSymbolTapped.add((symbol) async {
           mapController?.removeSymbol(symbol);
+          var location = await mapController?.getSymbolLatLng(symbol);
+          var locationOffset = await mapController?.toScreenLocation(location!);
+
+          var dx = locationOffset?.x.toDouble() ?? 0;
+          var dy = locationOffset?.y.toDouble() ?? 0;
+
           setState(() {
+            originPositionOffset = Offset(dx-30, dy-30);
             selectedStation = "${symbol.data?["name"]}-station";
+          });
+        });
+
+        this.mapController?.addListener(() {
+          if(selectedStation != null) {
+            this.addStation(selectedStation!);
+          }
+
+          setState(() {
+            selectedStation = null;
           });
         });
       },
@@ -96,8 +114,8 @@ class _MapPageState extends State<MapPage> {
     Widget stationFeedbackBox = Opacity(child: buildStationWidget(station), opacity: 0.8);
 
     return Positioned(
-      left: dragStartedAtOffset.dx,
-      top: dragStartedAtOffset.dy,
+      left: originPositionOffset.dx,
+      top: originPositionOffset.dy,
       child: Draggable(
         data: 1,
         child: StreamBuilder(
@@ -147,7 +165,7 @@ class _MapPageState extends State<MapPage> {
 
           Future.delayed(const Duration(milliseconds: 20), () {
             setState(() {
-              dragCanceledAtOffset = dragStartedAtOffset;
+              dragCanceledAtOffset = originPositionOffset;
             });
           });
         },
@@ -185,7 +203,7 @@ class _MapPageState extends State<MapPage> {
       widgets.add(buildDraggableStation(selectedStation!));
     }
 
-    if(dragEventCanceled) {
+    if(dragEventCanceled && selectedStation != null) {
       widgets.add(buildAnimatedDraggableStation());
     }
 
@@ -207,6 +225,17 @@ class _MapPageState extends State<MapPage> {
           dragEventCanceled = false;
         });
       }
+    );
+  }
+
+  void addStation(String stationName) {
+    mapController?.addSymbol(
+      SymbolOptions(
+        iconSize: 0.8,
+        geometry: LatLng(19.432, -99.133),
+        iconImage: "assets/images/${stationName}.png",
+      ),
+      { "name": "zocalo" }
     );
   }
 
