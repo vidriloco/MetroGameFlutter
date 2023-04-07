@@ -5,6 +5,7 @@ import "routes_list_page.dart";
 import "line-panel.dart";
 import 'package:rxdart/rxdart.dart';
 import 'package:collection/collection.dart';
+import 'dart:async';
 
 class MapPage extends StatefulWidget {
   const MapPage({Key? key, required this.title}) : super(key: key);
@@ -17,7 +18,7 @@ class MapPage extends StatefulWidget {
 
 class _MapPageState extends State<MapPage> {
   MapboxMapController? mapController;
-  String? selectedStation;
+  String? lastInteractedStation;
   LinePanel? linePanel;
   
   BehaviorSubject<String> feedbackEventsStream = new BehaviorSubject<String>();
@@ -25,7 +26,9 @@ class _MapPageState extends State<MapPage> {
 
   Offset dragCanceledAtOffset = Offset(20, 50);
   Offset originPositionOffset = Offset(50, 50);
-  bool dragEventCanceled = false;
+
+  double iconWidth = 40;
+  double iconHeight = 40;
 
   Widget? mapWidget;
 
@@ -52,28 +55,10 @@ class _MapPageState extends State<MapPage> {
       styleString: style,
       onMapCreated: (controller) async {
         this.mapController = controller;
-        this.mapController?.onSymbolTapped.add((symbol) async {
-          mapController?.removeSymbol(symbol);
-          var location = await mapController?.getSymbolLatLng(symbol);
-          var locationOffset = await mapController?.toScreenLocation(location!);
-
-          var dx = locationOffset?.x.toDouble() ?? 0;
-          var dy = locationOffset?.y.toDouble() ?? 0;
-
-          setState(() {
-            originPositionOffset = Offset(dx-30, dy-30);
-            selectedStation = "${symbol.data?["name"]}-station";
-          });
-        });
-
         this.mapController?.addListener(() {
-          if(selectedStation != null) {
-            this.addStation(selectedStation!);
+          if(!this.mapController!.isCameraMoving) {
+            this.buildVisibleStations();
           }
-
-          setState(() {
-            selectedStation = null;
-          });
         });
       },
       trackCameraPosition: true,
@@ -82,6 +67,38 @@ class _MapPageState extends State<MapPage> {
         target: LatLng(19.432, -99.133),
       )
     );
+  }
+
+  List<Widget> stationWidgets = <Widget>[];
+
+  void buildVisibleStations() {
+    setState(() {
+      stationWidgets = <Widget>[];
+    });
+
+    this.mapController?.symbols.forEach((symbol) async {
+      List<Widget> stations = this.stationWidgets;
+
+      var location = await mapController?.getSymbolLatLng(symbol);
+      LatLngBounds visibleRegion = await this.mapController!.getVisibleRegion();
+      if(isLatLngWithinBounds(location!, visibleRegion.southwest, visibleRegion.northeast)) {
+        var screenPoint = await mapController?.toScreenLocation(location);
+        var offset = Offset(screenPoint!.x.toDouble()-iconWidth/2, screenPoint.y.toDouble()-iconHeight/2);
+        stations.add(this.buildDraggableStation(symbol.data?["name"], offset));
+        setState(() {
+          stationWidgets = stations;
+        });
+      }
+    });
+  }
+
+  bool isLatLngWithinBounds(LatLng point, LatLng sw, LatLng ne) {
+    // Check if the point is within the bounding box defined by the southwest
+    // and northeast corners
+    return point.latitude >= sw.latitude &&
+      point.latitude <= ne.latitude &&
+      point.longitude >= sw.longitude &&
+      point.longitude <= ne.longitude;
   }
 
   LinePanel buildLinePanel() {
@@ -103,19 +120,17 @@ class _MapPageState extends State<MapPage> {
 
   Widget buildStationWidget(String name) {
     return Container(
-      width: 60,
-      height: 60,
-      child: Image.asset("assets/images/${name}.png")
+      width: this.iconWidth,
+      height: this.iconHeight,
+      child: Image.asset("assets/images/${name}-station.png")
     );
   }
 
-  Positioned buildDraggableStation(String station) {
-    Widget stationChildBox = buildStationWidget(station);
-    Widget stationFeedbackBox = Opacity(child: buildStationWidget(station), opacity: 0.8);
+  Positioned buildDraggableStation(String station, Offset position) {
 
     return Positioned(
-      left: originPositionOffset.dx,
-      top: originPositionOffset.dy,
+      left: position.dx,
+      top: position.dy,
       child: Draggable(
         data: 1,
         child: StreamBuilder(
@@ -123,7 +138,6 @@ class _MapPageState extends State<MapPage> {
           stream: childEventsStream,
           builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
             String shouldPresent = snapshot.data ?? "show";
-
             if (shouldPresent == "show") {
               return Opacity(child: buildStationWidget(station), opacity: 1);
             } else {
@@ -145,29 +159,27 @@ class _MapPageState extends State<MapPage> {
           },
         ),
         onDragStarted: (){ 
-            this.childEventsStream.add("hide");
+          this.childEventsStream.add("hide");
+          
+          this.lastInteractedStation = station;
+          // TODO: Remove symbol from map when starting dragging map marker
+          this.mapController?.removeSymbol();
         },
         onDragCompleted: (){
-          setState(() {
-            selectedStation = null;
-          });
+          if(lastInteractedStation != null) {
+            this.availableStations[lastInteractedStation!] = null;
+          }
+
+          setState(() { });
         },
         onDragEnd: (details){ 
           this.childEventsStream.add("show");
         },
         onDraggableCanceled: (Velocity velocity, Offset offset){
+          // TODO: Animate back
+
           this.childEventsStream.add("hide");
 
-          setState(() {
-              dragEventCanceled = true;
-              dragCanceledAtOffset = offset;
-          });
-
-          Future.delayed(const Duration(milliseconds: 20), () {
-            setState(() {
-              dragCanceledAtOffset = originPositionOffset;
-            });
-          });
         },
       ),
     );
@@ -195,18 +207,14 @@ class _MapPageState extends State<MapPage> {
       )
     ];
 
+    stationWidgets.forEach((widget) {
+      widgets.add(widget);
+    });
+
     if(linePanel != null) {
       widgets.add(linePanel!);
     }
-
-    if(selectedStation != null) {
-      widgets.add(buildDraggableStation(selectedStation!));
-    }
-
-    if(dragEventCanceled && selectedStation != null) {
-      widgets.add(buildAnimatedDraggableStation());
-    }
-
+    
     return Stack(children: widgets);
   }
 
@@ -218,63 +226,45 @@ class _MapPageState extends State<MapPage> {
       top: dragCanceledAtOffset.dy,
       duration: const Duration(milliseconds: 500),
       curve: Curves.fastOutSlowIn,
-      child: buildStationWidget(selectedStation!),
+      child: buildStationWidget(lastInteractedStation!),
       onEnd: () {
         this.childEventsStream.add("show");
-        setState(() {
-          dragEventCanceled = false;
-        });
       }
     );
   }
 
-  void addStation(String stationName) {
-    mapController?.addSymbol(
-      SymbolOptions(
-        iconSize: 0.8,
-        geometry: LatLng(19.432, -99.133),
-        iconImage: "assets/images/${stationName}.png",
-      ),
-      { "name": "zocalo" }
-    );
-  }
+  Map<String, SymbolOptions?>  availableStations = {
+    "zocalo": SymbolOptions(
+      iconSize: 0.7,
+      geometry: LatLng(19.432, -99.133),
+      iconImage: "assets/images/zocalo-station.png",
+    ),
+    "cuauhtemoc": SymbolOptions(
+      iconSize: 0.7,
+      geometry: LatLng(19.425862, -99.154701),
+      iconImage: "assets/images/cuauhtemoc-station.png",
+    ),
+    "juanacatlan": SymbolOptions(
+      iconSize: 0.7,
+      geometry: LatLng(19.41289, -99.182167),
+      iconImage: "assets/images/juanacatlan-station.png",
+    ),
+    "balderas": SymbolOptions(
+      iconSize: 0.7,
+      geometry: LatLng(19.42744, -99.149036),
+      iconImage: "assets/images/balderas-station.png",
+    )
+  };
 
   void addStations() {
-    mapController?.addSymbol(
-      SymbolOptions(
-        iconSize: 0.8,
-        geometry: LatLng(19.432, -99.133),
-        iconImage: "assets/images/zocalo-station.png",
-      ),
-      { "name": "zocalo" }
-    );
-
-    mapController?.addSymbol(
-      SymbolOptions(
-        iconSize: 0.8,
-        geometry: LatLng(19.425862, -99.154701),
-        iconImage: "assets/images/cuauhtemoc-station.png",
-      ),
-      { "name": "cuauhtemoc" }
-    );
-
-    mapController?.addSymbol(
-      SymbolOptions(
-        iconSize: 0.8,
-        geometry: LatLng(19.41289, -99.182167),
-        iconImage: "assets/images/juanacatlan-station.png",
-      ),
-      { "name": "juanacatlan" }
-    );
-
-    mapController?.addSymbol(
-      SymbolOptions(
-        iconSize: 0.8,
-        geometry: LatLng(19.42744, -99.149036),
-        iconImage: "assets/images/balderas-station.png",
-      ),
-      { "name": "balderas" }
-    );
+    availableStations.forEach((name, symbolOptions) {
+      if(symbolOptions != null) {
+        mapController?.addSymbol(
+          symbolOptions,
+          { "name": name }
+        );
+      }
+    });
   }
 
   @override
