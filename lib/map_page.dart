@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:mapbox_gl/mapbox_gl.dart';
 import "routes_list_page.dart";
 import "line-panel.dart";
+import "stations_list.dart";
 import 'package:rxdart/rxdart.dart';
 import 'package:collection/collection.dart';
 import 'dart:async';
@@ -21,6 +22,10 @@ class _MapPageState extends State<MapPage> {
   String? lastInteractedStation;
   LinePanel? linePanel;
   
+  List<Widget> stationWidgets = <Widget>[];
+
+  Map<String, SymbolOptions?> availableStations = STATIONS;
+
   BehaviorSubject<String> feedbackEventsStream = new BehaviorSubject<String>();
   BehaviorSubject<String> childEventsStream = new BehaviorSubject<String>();
 
@@ -61,15 +66,14 @@ class _MapPageState extends State<MapPage> {
           }
         });
       },
+      minMaxZoomPreference: MinMaxZoomPreference(15, 18),
       trackCameraPosition: true,
       initialCameraPosition: CameraPosition(
         zoom: 15.0,
-        target: LatLng(19.432, -99.133),
+        target: LatLng(19.432, -99.133)
       )
     );
   }
-
-  List<Widget> stationWidgets = <Widget>[];
 
   void buildVisibleStations() {
     setState(() {
@@ -81,6 +85,7 @@ class _MapPageState extends State<MapPage> {
 
       var location = await mapController?.getSymbolLatLng(symbol);
       LatLngBounds visibleRegion = await this.mapController!.getVisibleRegion();
+
       if(isLatLngWithinBounds(location!, visibleRegion.southwest, visibleRegion.northeast)) {
         var screenPoint = await mapController?.toScreenLocation(location);
         var offset = Offset(screenPoint!.x.toDouble()-iconWidth/2, screenPoint.y.toDouble()-iconHeight/2);
@@ -122,7 +127,7 @@ class _MapPageState extends State<MapPage> {
     return Container(
       width: this.iconWidth,
       height: this.iconHeight,
-      child: Image.asset("assets/images/${name}-station.png")
+      child: Image.asset("assets/images/${name}.png")
     );
   }
 
@@ -132,17 +137,12 @@ class _MapPageState extends State<MapPage> {
       left: position.dx,
       top: position.dy,
       child: Draggable(
-        data: 1,
+        data: station,
         child: StreamBuilder(
           initialData: "show",
           stream: childEventsStream,
           builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
-            String shouldPresent = snapshot.data ?? "show";
-            if (shouldPresent == "show") {
-              return Opacity(child: buildStationWidget(station), opacity: 1);
-            } else {
-              return Opacity(child: buildStationWidget(station), opacity: 0);
-            }
+            return Opacity(child: buildStationWidget(station), opacity: 0);
           },
         ),
         feedback: StreamBuilder(
@@ -160,15 +160,10 @@ class _MapPageState extends State<MapPage> {
         ),
         onDragStarted: (){ 
           this.childEventsStream.add("hide");
-          
           this.lastInteractedStation = station;
-          // TODO: Remove symbol from map when starting dragging map marker
-          this.mapController?.removeSymbol();
         },
         onDragCompleted: (){
-          if(lastInteractedStation != null) {
-            this.availableStations[lastInteractedStation!] = null;
-          }
+          this.removeLastInteractedStation();
 
           setState(() { });
         },
@@ -176,13 +171,23 @@ class _MapPageState extends State<MapPage> {
           this.childEventsStream.add("show");
         },
         onDraggableCanceled: (Velocity velocity, Offset offset){
-          // TODO: Animate back
-
           this.childEventsStream.add("hide");
-
         },
       ),
     );
+  }
+
+  void removeLastInteractedStation() {
+    if(lastInteractedStation != null) {
+      this.availableStations[lastInteractedStation!] = null;
+    }
+
+    this.mapController?.symbols.forEach((symbol) async {
+      var symbolName = symbol.data?["name"];
+      if(symbolName == lastInteractedStation) {
+        this.mapController?.removeSymbol(symbol);
+      }
+    });
   }
 
   Widget buildBody(BuildContext context) {
@@ -233,30 +238,9 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
-  Map<String, SymbolOptions?>  availableStations = {
-    "zocalo": SymbolOptions(
-      iconSize: 0.7,
-      geometry: LatLng(19.432, -99.133),
-      iconImage: "assets/images/zocalo-station.png",
-    ),
-    "cuauhtemoc": SymbolOptions(
-      iconSize: 0.7,
-      geometry: LatLng(19.425862, -99.154701),
-      iconImage: "assets/images/cuauhtemoc-station.png",
-    ),
-    "juanacatlan": SymbolOptions(
-      iconSize: 0.7,
-      geometry: LatLng(19.41289, -99.182167),
-      iconImage: "assets/images/juanacatlan-station.png",
-    ),
-    "balderas": SymbolOptions(
-      iconSize: 0.7,
-      geometry: LatLng(19.42744, -99.149036),
-      iconImage: "assets/images/balderas-station.png",
-    )
-  };
-
   void addStations() {
+    mapController?.setSymbolIconAllowOverlap(true);
+
     availableStations.forEach((name, symbolOptions) {
       if(symbolOptions != null) {
         mapController?.addSymbol(

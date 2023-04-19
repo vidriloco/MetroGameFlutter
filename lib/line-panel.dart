@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:flutter/services.dart';
+import "scenarios_list.dart";
 
 typedef LinePanelStationDropWillAccept = void Function(Object? data);
 typedef LinePanelStationDropAccept = void Function(Object? data);
@@ -23,43 +25,37 @@ class LinePanel extends StatefulWidget {
 }
 
 class _LinePanelState extends State<LinePanel> {
+
     Container buildEmptyBox() {
+        return buildBox("empty-station");
+    }
+
+    Container buildBox(String station) {
         return Container(
-            height: 80,
-            width: 80,
+            height: 100,
+            width: 100,
             color: Colors.white,
-            child: Image.asset('assets/images/empty-station.png')
+            child: Image.asset('assets/images/${station}.png')
         );
     }
 
-    Container buildBox(String title, Color color) {
-        return Container(
-            width: 40,
-            height: 40,
-            color: color,
-            child: Center(
-                child: Text(title,
-                    style: TextStyle(fontSize: 18, color: Colors.black)
-                )
-            )
-        );
-    }
-
-    DragTarget dragTarget() {
+    DragTarget dragTarget(String identifier) {
         return DragTarget(
             builder: (context, candidateData, rejectedData) {
-            return Container(
-                height: 80,
-                width: 80,
-                color: Colors.white,
-                child: Image.asset('assets/images/empty-station.png')
-            );
+                return this.buildEmptyBox();
             },
             onWillAccept: (data) {
-                this.widget.onDropWillAccept(data);
-                return true;
+                if(identifier == data) {
+                    HapticFeedback.heavyImpact();
+                    this.widget.onDropWillAccept(data);
+                    return true;
+                }
+                return false;
             },
             onAccept: (data) {
+                HapticFeedback.lightImpact();
+                this.enabledStations.add(data as String);
+                setState(() {});
                 this.widget.onDropAccept(data);
             },
             onLeave: (data) {
@@ -68,40 +64,31 @@ class _LinePanelState extends State<LinePanel> {
         );
     }
 
+    var enabledStations = SCENARIOS[0].enabledStations;
+    var availableStations = SCENARIOS[0].path;
+
     Container buildStationsContainer() {
+        List<Widget> widgets = [];
+
+        availableStations.asMap().forEach((index, station) {
+            if(index > 0) {
+                widgets.add(SizedBox(width: 50));
+            }
+
+            if(enabledStations.contains(station)) {
+                widgets.add(buildBox(station));
+            } else {
+                widgets.add(dragTarget(station));
+            }
+        });
+
         return Container(
-                decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                ),
-                padding: const EdgeInsets.only(left: 100, top: 20, right: 100, bottom: 20),
-                child: Row(
-                    children: <Widget>[
-                    Container(
-                        height: 80,
-                        width: 80,
-                        color: Colors.white,
-                        child: Image.asset('assets/images/insurgentes-station.png')
-                    ),
-                    SizedBox(width: 50),
-                    Container(
-                        height: 80,
-                        width: 80,
-                        child: this.dragTarget()
-                    ),
-                    SizedBox(width: 50),
-                    buildEmptyBox(),
-                    SizedBox(width: 50),
-                    buildEmptyBox(),
-                    SizedBox(width: 50),
-                    Container(
-                        height: 80,
-                        width: 80,
-                        color: Colors.white,
-                        child: Image.asset('assets/images/garibaldi-station.png')
-                    )
-                ]
-            )
+            decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+            ),
+            padding: const EdgeInsets.only(left: 100, top: 20, right: 100, bottom: 20),
+            child: Row(children: widgets)
         );
     }
 
