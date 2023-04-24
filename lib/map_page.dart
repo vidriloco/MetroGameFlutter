@@ -7,6 +7,9 @@ import "stations_list.dart";
 import 'package:rxdart/rxdart.dart';
 import 'package:collection/collection.dart';
 import 'dart:async';
+import 'challenges_menu.dart';
+
+enum GameMode { menu, playing, paused, help }
 
 class MapPage extends StatefulWidget {
   const MapPage({Key? key, required this.title}) : super(key: key);
@@ -36,6 +39,8 @@ class _MapPageState extends State<MapPage> {
   double iconHeight = 40;
 
   Widget? mapWidget;
+
+  GameMode currentMode = GameMode.menu;
 
   @override
   void initState() {
@@ -195,30 +200,39 @@ class _MapPageState extends State<MapPage> {
       Container(
         color: Colors.blue,
         child: mapWidget
-      ),
-      Positioned(
-        left: 20,
-        top: 60, 
-        child: GestureDetector(
-          onTap: (){
-            this.addStations();
-          },
-          child: Container(
-            width: 20,
-            height: 20,
-            color: Colors.white
-          )
-        )
       )
     ];
 
-    stationWidgets.forEach((widget) {
-      widgets.add(widget);
-    });
+    if(this.currentMode == GameMode.playing) {
+      widgets.add(
+        Positioned(
+          left: 20,
+          top: 60, 
+          child: GestureDetector(
+            onTap: (){
+              this.addStations();
+            },
+            child: Container(
+              width: 20,
+              height: 20,
+              color: Colors.white
+            )
+          )
+        )
+      );
 
-    if(linePanel != null) {
-      widgets.add(linePanel!);
+      stationWidgets.forEach((widget) {
+        widgets.add(widget);
+      });
+
+      if(linePanel != null) {
+        widgets.add(linePanel!);
+      }
+    } else {
+      widgets.add(ChallengesMenu(title: "🚇 Todos los retos"));
     }
+
+    
     
     return Stack(children: widgets);
   }

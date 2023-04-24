@@ -25,6 +25,9 @@ class LinePanel extends StatefulWidget {
 }
 
 class _LinePanelState extends State<LinePanel> {
+    
+    var enabledStations = SCENARIOS[0].enabledStations;
+    var availableStations = SCENARIOS[0].path;
 
     Container buildEmptyBox() {
         return buildBox("empty-station");
@@ -63,9 +66,6 @@ class _LinePanelState extends State<LinePanel> {
             },
         );
     }
-
-    var enabledStations = SCENARIOS[0].enabledStations;
-    var availableStations = SCENARIOS[0].path;
 
     Container buildStationsContainer() {
         List<Widget> widgets = [];
