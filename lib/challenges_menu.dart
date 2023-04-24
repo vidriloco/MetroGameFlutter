@@ -122,23 +122,26 @@ class _ChallengeCard extends State<ChallengeCard> {
     }
 
     Column buildChallengeList() {
-        return Column(children: [
-                Padding(
-                    padding: EdgeInsets.only(left: 15, bottom: 15, top: 10, right: 15),
-                    child: Column(children: [
-                        Text(widget.level.icon, style: TextStyle(fontSize: 40)),
-                        Text(widget.level.title,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Futura', fontSize: 20, color: Colors.white)
-                        )   
-                    ])
-                ),
-                Challenge(scenario: SCENARIOS[0]),
-                Challenge(scenario: SCENARIOS[1]),
-                Challenge(scenario: SCENARIOS[2]),
-                Challenge(scenario: SCENARIOS[3])
-            ]
-        );
+
+        List<Widget> challenges = [
+            Padding(
+                padding: EdgeInsets.only(left: 15, bottom: 15, top: 10, right: 15),
+                child: Column(children: [
+                    Text(widget.level.icon, style: TextStyle(fontSize: 40)),
+                    Text(widget.level.title,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Futura', fontSize: 20, color: Colors.white)
+                    )   
+                ])
+            )
+        ];
+
+        SCENARIOS
+        .where((i) => i.levelId == widget.level.id)
+        .toList()
+        .forEach((s) => challenges.add(Challenge(scenario: s)));
+
+        return Column(children: challenges);
     }
 
     Container buildContent() {
@@ -238,14 +241,6 @@ class _Challenge extends State<Challenge> {
     Container buildContent() {
         var backgroundColor = isPressed ? Colors.grey : Colors.white;
 
-        var cardContent = Container(
-            decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-            ),
-            child: buildTextContent()
-        );
-
         return Container(
             margin: EdgeInsets.symmetric(vertical: 10.0),
             width: double.infinity,
@@ -260,14 +255,14 @@ class _Challenge extends State<Challenge> {
                 decoration: BoxDecoration(
                     color: backgroundColor,
                     border: Border.all(
-                        width: 2,
+                        width: 1,
                         color: Colors.white
                     ),
                     borderRadius: BorderRadius.circular(8),
                 ),
                 child: Padding(
                     padding: EdgeInsets.only(left: 15, bottom: 15, top: 20, right: 15),
-                    child: cardContent
+                    child: buildTextContent()
                 ),
             ),
         );
