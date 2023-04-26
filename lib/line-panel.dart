@@ -11,11 +11,13 @@ typedef LinePanelStationDropLeave = void Function(Object? data);
 class LinePanel extends StatefulWidget {
   const LinePanel({Key? key, 
     required this.title, 
+    required this.scenario,
     required this.onDropWillAccept, 
     required this.onDropAccept,
     required this.onDropLeave}) : super(key: key);
 
   final String title;
+  final Scenario scenario;
   final LinePanelStationDropWillAccept onDropWillAccept;
   final LinePanelStationDropWillAccept onDropAccept;
   final LinePanelStationDropWillAccept onDropLeave;
@@ -28,6 +30,13 @@ class _LinePanelState extends State<LinePanel> {
     
     var enabledStations = SCENARIOS[0].enabledStations;
     var availableStations = SCENARIOS[0].path;
+
+    @override
+    void initState() {
+        super.initState();
+        this.enabledStations = this.widget.scenario.enabledStations;
+        this.availableStations = this.widget.scenario.path;
+    }
 
     Container buildEmptyBox() {
         return buildBox("empty-station");

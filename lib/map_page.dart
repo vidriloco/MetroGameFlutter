@@ -8,6 +8,8 @@ import 'package:rxdart/rxdart.dart';
 import 'package:collection/collection.dart';
 import 'dart:async';
 import 'challenges_menu.dart';
+import "levels_list.dart";
+import "scenarios_list.dart";
 
 enum GameMode { menu, playing, paused, help }
 
@@ -23,7 +25,6 @@ class MapPage extends StatefulWidget {
 class _MapPageState extends State<MapPage> {
   MapboxMapController? mapController;
   String? lastInteractedStation;
-  LinePanel? linePanel;
   
   List<Widget> stationWidgets = <Widget>[];
 
@@ -41,13 +42,14 @@ class _MapPageState extends State<MapPage> {
   Widget? mapWidget;
 
   GameMode currentMode = GameMode.menu;
+  Level? levelSelected;
+  Scenario? scenarioSelected;
 
   @override
   void initState() {
     super.initState();
 
     this.mapWidget = buildMap();
-    this.linePanel = buildLinePanel();
   }
 
   @override
@@ -111,9 +113,15 @@ class _MapPageState extends State<MapPage> {
       point.longitude <= ne.longitude;
   }
 
-  LinePanel buildLinePanel() {
+  LinePanel? buildLinePanel() {
+
+    if(this.scenarioSelected == null) {
+      return null;
+    }
+
     return LinePanel(
-      title: 'Linea 1', 
+      title: 'Linea 1',
+      scenario: this.scenarioSelected!,
       onDropWillAccept: (data) {
         this.feedbackEventsStream.add("will-accept");
       },
@@ -225,15 +233,25 @@ class _MapPageState extends State<MapPage> {
         widgets.add(widget);
       });
 
+      var linePanel = buildLinePanel();
       if(linePanel != null) {
-        widgets.add(linePanel!);
+        widgets.add(linePanel);
       }
+
     } else {
-      widgets.add(ChallengesMenu(title: "🚇 Todos los retos"));
+      widgets.add(ChallengesMenu(
+        title: "🚇 Todos los retos", 
+        levelSelected: this.levelSelected?.id, 
+        levelAndScenarioSelected: ((level, scenario) {
+          setState(() {
+            levelSelected = level;
+            scenarioSelected = scenario;
+            currentMode = GameMode.playing;
+          });
+          print("Level: ${level.title} on scenario: ${scenario.title}");
+        })));
     }
 
-    
-    
     return Stack(children: widgets);
   }
 

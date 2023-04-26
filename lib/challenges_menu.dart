@@ -4,14 +4,18 @@ import 'package:rxdart/rxdart.dart';
 import "levels_list.dart";
 import "scenarios_list.dart";
 
+typedef SelectedScenarioCallback = void Function(Scenario scenario);
+typedef LevelAndScenarioSelectedCallback = void Function(Level level, Scenario scenario);
+
 class ChallengesMenu extends StatefulWidget {
-  const ChallengesMenu({Key? key, 
-    required this.title}) : super(key: key);
+  const ChallengesMenu({Key? key, required this.title, this.levelSelected, required this.levelAndScenarioSelected }) : super(key: key);
 
-  final String title;
+    final String title;
+    final int? levelSelected;
+    final LevelAndScenarioSelectedCallback levelAndScenarioSelected;
 
-  @override
-  State<ChallengesMenu> createState() => _ChallengesMenu();
+    @override
+    State<ChallengesMenu> createState() => _ChallengesMenu();
 }
 
 class _ChallengesMenu extends State<ChallengesMenu> {
@@ -75,7 +79,13 @@ class _ChallengesMenu extends State<ChallengesMenu> {
       List<Widget> widgets = [];
       
       this.levels.forEach((level) {
-        widgets.add(ChallengeCard(level: level));
+        widgets.add(ChallengeCard(
+            level: level, 
+            isChallengeSelected: level.id == this.widget.levelSelected,
+            levelAndScenarioSelected: ((level, scenario) {
+                this.widget.levelAndScenarioSelected(level, scenario);
+            }) 
+        ));
       });
 
       return Container(
@@ -89,18 +99,25 @@ class _ChallengesMenu extends State<ChallengesMenu> {
 }
 
 class ChallengeCard extends StatefulWidget {
-  const ChallengeCard({Key? key, 
-    required this.level}) : super(key: key);
+    const ChallengeCard({Key? key, required this.level, required this.isChallengeSelected, required this.levelAndScenarioSelected }) : super(key: key);
 
-  final Level level;
+    final Level level;
+    final bool isChallengeSelected;
+    final LevelAndScenarioSelectedCallback levelAndScenarioSelected;
 
-  @override
-  State<ChallengeCard> createState() => _ChallengeCard();
+    @override
+    State<ChallengeCard> createState() => _ChallengeCard();
 }
 
 class _ChallengeCard extends State<ChallengeCard> {
     var isPressed = false;
     var shouldDisplayListOfChallenges = false;
+
+    @override
+    void initState() {
+        super.initState();
+        this.shouldDisplayListOfChallenges = this.widget.isChallengeSelected;
+    }
 
     Column buildTextContent() {
         return Column(children: [
@@ -137,9 +154,11 @@ class _ChallengeCard extends State<ChallengeCard> {
         ];
 
         SCENARIOS
-        .where((i) => i.levelId == widget.level.id)
+        .where((i) => i.levelId == this.widget.level.id)
         .toList()
-        .forEach((s) => challenges.add(Challenge(scenario: s)));
+        .forEach((s) => challenges.add(Challenge(scenario: s, onTap: ((scenario) {
+            this.widget.levelAndScenarioSelected(this.widget.level, scenario);
+        }))));
 
         return Column(children: challenges);
     }
@@ -201,9 +220,10 @@ class _ChallengeCard extends State<ChallengeCard> {
 
 class Challenge extends StatefulWidget {
   const Challenge({Key? key, 
-    required this.scenario}) : super(key: key);
+    required this.scenario, required this.onTap}) : super(key: key);
 
     final Scenario scenario;
+    final SelectedScenarioCallback onTap;
 
     @override
     State<Challenge> createState() => _Challenge();
@@ -277,6 +297,7 @@ class _Challenge extends State<Challenge> {
                 setState((){
                     isPressed = true;
                 });
+                this.widget.onTap(this.widget.scenario);
             },
             child: container
         );
