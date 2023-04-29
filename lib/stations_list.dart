@@ -25,7 +25,7 @@ Map<String, SymbolOptions?> STATIONS = {
     // Linea 2
     "tasquena": SymbolOptions(geometry: LatLng(19.343757098277699, -99.1395327763843), iconImage: "assets/images/tasquena.png", iconSize: 0.15),
     "generalanaya": SymbolOptions(geometry: LatLng(19.353235914861202, -99.145006362954504), iconImage: "assets/images/generalanaya.png", iconSize: 0.15),
-    "ermita": SymbolOptions(geometry: LatLng(19.359823503023801, -99.141631363054401), iconImage: "assets/images/ermita.png", iconSize: 0.15),
+    "ermita": SymbolOptions(geometry: LatLng(19.359823503023801, -99.141631363054401), iconImage: "assets/images/ermita.png", iconSize: 0.8),
     "portales": SymbolOptions(geometry: LatLng(19.369924838667998, -99.141573554914402), iconImage: "assets/images/portales.png", iconSize: 0.15),
     "nativitas": SymbolOptions(geometry: LatLng(19.379532760913602, -99.140187889707605), iconImage: "assets/images/nativitas.png", iconSize: 0.15),
     "villadecortes": SymbolOptions(geometry: LatLng(19.387581775826, -99.138959166221198), iconImage: "assets/images/villadecortes.png", iconSize: 0.15),

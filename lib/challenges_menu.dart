@@ -38,16 +38,16 @@ class _ChallengesMenu extends State<ChallengesMenu> {
         width: double.infinity,
         child: Container(
             decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
             ),
             child: Padding(
-            padding: EdgeInsets.all(10.0),
-            child: Text(
-                "🚇 Todos los retos", 
-                textAlign: TextAlign.center,
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, fontFamily: 'Futura')
-            ),
+                padding: EdgeInsets.all(10.0),
+                child: Text(
+                    "🚇 Todos los retos", 
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, fontFamily: 'Futura')
+                ),
             ),
         )
         );
@@ -271,6 +271,7 @@ class _Challenge extends State<Challenge> {
                     setState((){
                         isPressed = false;
                     });
+                    this.widget.onTap(this.widget.scenario);
                 },
                 decoration: BoxDecoration(
                     color: backgroundColor,
@@ -297,7 +298,6 @@ class _Challenge extends State<Challenge> {
                 setState((){
                     isPressed = true;
                 });
-                this.widget.onTap(this.widget.scenario);
             },
             child: container
         );

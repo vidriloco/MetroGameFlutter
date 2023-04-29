@@ -10,6 +10,7 @@ import 'dart:async';
 import 'challenges_menu.dart';
 import "levels_list.dart";
 import "scenarios_list.dart";
+import "challenge_dialog.dart";
 
 enum GameMode { menu, playing, paused, help }
 
@@ -177,7 +178,6 @@ class _MapPageState extends State<MapPage> {
         },
         onDragCompleted: (){
           this.removeLastInteractedStation();
-
           setState(() { });
         },
         onDragEnd: (details){ 
@@ -212,23 +212,6 @@ class _MapPageState extends State<MapPage> {
     ];
 
     if(this.currentMode == GameMode.playing) {
-      widgets.add(
-        Positioned(
-          left: 20,
-          top: 60, 
-          child: GestureDetector(
-            onTap: (){
-              this.addStations();
-            },
-            child: Container(
-              width: 20,
-              height: 20,
-              color: Colors.white
-            )
-          )
-        )
-      );
-
       stationWidgets.forEach((widget) {
         widgets.add(widget);
       });
@@ -238,6 +221,40 @@ class _MapPageState extends State<MapPage> {
         widgets.add(linePanel);
       }
 
+    } else if(this.currentMode == GameMode.paused) {
+      if(this.scenarioSelected != null) {
+        
+        var firstStation = this.scenarioSelected!.enabledStations.first;
+        var stationData = this.availableStations[firstStation];
+
+        if(stationData?.geometry != null) {
+          var coordinate = (stationData?.geometry)!;
+          var cameraPosition = CameraPosition(
+            target: coordinate,
+            zoom: 14,
+          );
+
+          mapController?.animateCamera(
+            CameraUpdate.newCameraPosition(cameraPosition)
+          );
+        }
+        
+        widgets.add(
+          ChallengeDialog(
+            scenario: this.scenarioSelected!, 
+            onTapReturn: (() {
+              setState(() {
+                currentMode = GameMode.menu;
+              });
+            }),
+            onTapStart: (() {
+              setState(() {
+                currentMode = GameMode.playing;
+              });
+            })
+          )
+        );
+      }
     } else {
       widgets.add(ChallengesMenu(
         title: "🚇 Todos los retos", 
@@ -246,8 +263,9 @@ class _MapPageState extends State<MapPage> {
           setState(() {
             levelSelected = level;
             scenarioSelected = scenario;
-            currentMode = GameMode.playing;
+            currentMode = GameMode.paused;
           });
+          this.addStations();
           print("Level: ${level.title} on scenario: ${scenario.title}");
         })));
     }
