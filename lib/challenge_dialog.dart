@@ -5,8 +5,9 @@ import "levels_list.dart";
 import "scenarios_list.dart";
 
 class ChallengeDialog extends StatefulWidget {
-  const ChallengeDialog({Key? key, required this.scenario, required this.onTapStart, required this.onTapReturn }) : super(key: key);
+  const ChallengeDialog({Key? key, required this.mainActionTitle, required this.scenario, required this.onTapStart, required this.onTapReturn }) : super(key: key);
 
+    final String mainActionTitle;
     final Scenario scenario;
     final Function onTapStart;
     final Function onTapReturn;
@@ -75,7 +76,7 @@ class _ChallengeDialog extends State<ChallengeDialog> {
             ),
             child: Padding(
                 padding: EdgeInsets.only(left: 15, bottom: 10, top: 10, right: 15),
-                child: Text("Regresar",
+                child: Text("Salir",
                     textAlign: TextAlign.center,
                     style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Futura', fontSize: 15, color: Colors.white)
                 )
@@ -111,7 +112,7 @@ class _ChallengeDialog extends State<ChallengeDialog> {
             ),
             child: Padding(
                 padding: EdgeInsets.only(left: 15, bottom: 10, top: 10, right: 15),
-                child: Text("Empezar",
+                child: Text(this.widget.mainActionTitle,
                     textAlign: TextAlign.center,
                     style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Futura', fontSize: 15, color: Colors.white)
                 )
@@ -130,7 +131,7 @@ class _ChallengeDialog extends State<ChallengeDialog> {
 
     @override
     Widget build(BuildContext context) {
-        var container = Container(
+        return Container(
             width: double.infinity,
             height: double.infinity,
             child: Column(
@@ -170,7 +171,5 @@ class _ChallengeDialog extends State<ChallengeDialog> {
                 ]
             )
         );
-        
-        return container;
     }
 }

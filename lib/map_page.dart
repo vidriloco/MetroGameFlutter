@@ -11,8 +11,9 @@ import 'challenges_menu.dart';
 import "levels_list.dart";
 import "scenarios_list.dart";
 import "challenge_dialog.dart";
+import "timer_dialog.dart";
 
-enum GameMode { menu, playing, paused, help }
+enum GameMode { menu, playing, start, paused, help }
 
 class MapPage extends StatefulWidget {
   const MapPage({Key? key, required this.title}) : super(key: key);
@@ -45,6 +46,7 @@ class _MapPageState extends State<MapPage> {
   GameMode currentMode = GameMode.menu;
   Level? levelSelected;
   Scenario? scenarioSelected;
+  int totalSeconds = 0;
 
   @override
   void initState() {
@@ -212,16 +214,20 @@ class _MapPageState extends State<MapPage> {
     ];
 
     if(this.currentMode == GameMode.playing) {
+      var linePanel = buildLinePanel();
+      if(linePanel == null) {
+        return Stack(children: widgets);
+      }
+
+      widgets.add(linePanel);
+
       stationWidgets.forEach((widget) {
         widgets.add(widget);
       });
 
-      var linePanel = buildLinePanel();
-      if(linePanel != null) {
-        widgets.add(linePanel);
-      }
+      widgets.add(buildTimerWidget());
 
-    } else if(this.currentMode == GameMode.paused) {
+    } else if(this.currentMode == GameMode.paused || this.currentMode == GameMode.start) {
       if(this.scenarioSelected != null) {
         
         var firstStation = this.scenarioSelected!.enabledStations.first;
@@ -239,38 +245,60 @@ class _MapPageState extends State<MapPage> {
           );
         }
         
-        widgets.add(
-          ChallengeDialog(
-            scenario: this.scenarioSelected!, 
-            onTapReturn: (() {
-              setState(() {
-                currentMode = GameMode.menu;
-              });
-            }),
-            onTapStart: (() {
-              setState(() {
-                currentMode = GameMode.playing;
-              });
-            })
-          )
-        );
+        widgets.add(buildChallengeDialog());
       }
     } else {
-      widgets.add(ChallengesMenu(
+      widgets.add(buildChallengeMenu());
+    }
+
+    return Stack(children: widgets);
+  }
+
+  Widget buildTimerWidget() {
+    return TimerDialog(
+      seconds: totalSeconds,
+      onTapPaused: ((seconds) {
+        setState(() {
+          currentMode = GameMode.paused;
+          totalSeconds = totalSeconds + seconds;
+        });
+      })
+    );
+  }
+
+  Widget buildChallengeDialog() {
+    return ChallengeDialog(
+      mainActionTitle: this.currentMode == GameMode.start  ? "Empezar" : "Continuar",
+      scenario: this.scenarioSelected!, 
+      onTapReturn: (() {
+        setState(() {
+          totalSeconds = 0;
+          currentMode = GameMode.menu;
+        });
+      }),
+      onTapStart: (() {
+        setState(() {
+          currentMode = GameMode.playing;
+        });
+      })
+    );
+  }
+
+  Widget buildChallengeMenu() {
+    return ChallengesMenu(
         title: "🚇 Todos los retos", 
         levelSelected: this.levelSelected?.id, 
         levelAndScenarioSelected: ((level, scenario) {
           setState(() {
             levelSelected = level;
             scenarioSelected = scenario;
-            currentMode = GameMode.paused;
+            currentMode = GameMode.start;
           });
           this.addStations();
           print("Level: ${level.title} on scenario: ${scenario.title}");
-        })));
-    }
-
-    return Stack(children: widgets);
+        }
+      )
+    );
   }
 
   AnimatedPositioned buildAnimatedDraggableStation() {
