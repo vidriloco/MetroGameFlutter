@@ -12,8 +12,9 @@ import "levels_list.dart";
 import "scenarios_list.dart";
 import "challenge_dialog.dart";
 import "timer_dialog.dart";
+import "completed_menu.dart";
 
-enum GameMode { menu, playing, start, paused, help }
+enum GameMode { menu, playing, start, paused, help, completed }
 
 class MapPage extends StatefulWidget {
   const MapPage({Key? key, required this.title}) : super(key: key);
@@ -30,7 +31,7 @@ class _MapPageState extends State<MapPage> {
   
   List<Widget> stationWidgets = <Widget>[];
 
-  Map<String, SymbolOptions?> availableStations = STATIONS;
+  Map<String, SymbolOptions?> availableStations = new Map<String, SymbolOptions?>.from(STATIONS);
 
   BehaviorSubject<String> feedbackEventsStream = new BehaviorSubject<String>();
   BehaviorSubject<String> childEventsStream = new BehaviorSubject<String>();
@@ -46,12 +47,12 @@ class _MapPageState extends State<MapPage> {
   GameMode currentMode = GameMode.menu;
   Level? levelSelected;
   Scenario? scenarioSelected;
+  int scenarioIndex = 0;
   int totalSeconds = 0;
 
   @override
   void initState() {
     super.initState();
-
     this.mapWidget = buildMap();
   }
 
@@ -135,6 +136,9 @@ class _MapPageState extends State<MapPage> {
       onDropLeave: (data) {
         this.feedbackEventsStream.add("leave");
         this.childEventsStream.add("hide");
+      },
+      onCompleted: () {
+        this.currentMode = GameMode.completed;
       }
     );
   }
@@ -230,23 +234,14 @@ class _MapPageState extends State<MapPage> {
     } else if(this.currentMode == GameMode.paused || this.currentMode == GameMode.start) {
       if(this.scenarioSelected != null) {
         
-        var firstStation = this.scenarioSelected!.enabledStations.first;
-        var stationData = this.availableStations[firstStation];
-
-        if(stationData?.geometry != null) {
-          var coordinate = (stationData?.geometry)!;
-          var cameraPosition = CameraPosition(
-            target: coordinate,
-            zoom: 14,
-          );
-
-          mapController?.animateCamera(
-            CameraUpdate.newCameraPosition(cameraPosition)
-          );
-        }
-        
         widgets.add(buildChallengeDialog());
       }
+    } else if(this.currentMode == GameMode.completed) {
+      setState(() {
+        availableStations = new Map<String, SymbolOptions?>.from(STATIONS);
+      });
+      
+      widgets.add(buildCompletedLevelMenu());
     } else {
       widgets.add(buildChallengeMenu());
     }
@@ -266,7 +261,47 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
+  Widget buildCompletedLevelMenu() {
+
+    return CompletedMenu(
+      onTapRestart: () {
+        setState(() {
+          availableStations = new Map<String, SymbolOptions?>.from(STATIONS);
+          mapWidget = buildMap();
+          currentMode = GameMode.start;
+        });
+      }, 
+      
+      onTapReturn: () {
+        setState(() {
+          currentMode = GameMode.menu;
+        });
+      }, 
+      onTapNext: () {
+        setState(() {
+          scenarioIndex = (scenarioSelected?.id ?? 0)+1;
+          scenarioSelected = SCENARIOS.where((i) => i.id == scenarioIndex).toList().first;
+          currentMode = GameMode.start;
+        });
+      });
+  }
+
   Widget buildChallengeDialog() {
+    var firstStation = this.scenarioSelected!.enabledStations.first;
+    var stationData = this.availableStations[firstStation];
+
+    if(stationData?.geometry != null) {
+      var coordinate = (stationData?.geometry)!;
+      var cameraPosition = CameraPosition(
+        target: coordinate,
+        zoom: 14,
+      );
+
+      mapController?.animateCamera(
+        CameraUpdate.newCameraPosition(cameraPosition)
+      );
+    }
+
     return ChallengeDialog(
       mainActionTitle: this.currentMode == GameMode.start  ? "Empezar" : "Continuar",
       scenario: this.scenarioSelected!, 
@@ -295,7 +330,6 @@ class _MapPageState extends State<MapPage> {
             currentMode = GameMode.start;
           });
           this.addStations();
-          print("Level: ${level.title} on scenario: ${scenario.title}");
         }
       )
     );

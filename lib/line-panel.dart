@@ -5,8 +5,9 @@ import 'package:flutter/services.dart';
 import "scenarios_list.dart";
 
 typedef LinePanelStationDropWillAccept = void Function(Object? data);
-typedef LinePanelStationDropAccept = void Function(Object? data);
+typedef LinePanelStationDropAccept = void Function(Object? data, int remainingStations);
 typedef LinePanelStationDropLeave = void Function(Object? data);
+typedef LinePanelStationCompleted = void Function();
 
 class LinePanel extends StatefulWidget {
   const LinePanel({Key? key, 
@@ -14,13 +15,15 @@ class LinePanel extends StatefulWidget {
     required this.scenario,
     required this.onDropWillAccept, 
     required this.onDropAccept,
-    required this.onDropLeave}) : super(key: key);
+    required this.onDropLeave,
+    required this.onCompleted}) : super(key: key);
 
   final String title;
   final Scenario scenario;
   final LinePanelStationDropWillAccept onDropWillAccept;
   final LinePanelStationDropWillAccept onDropAccept;
   final LinePanelStationDropWillAccept onDropLeave;
+  final LinePanelStationCompleted onCompleted;
 
   @override
   State<LinePanel> createState() => _LinePanelState();
@@ -31,11 +34,20 @@ class _LinePanelState extends State<LinePanel> {
     var enabledStations = SCENARIOS[0].enabledStations;
     var availableStations = SCENARIOS[0].path;
 
+    var unasignedStations = 0;
+
     @override
     void initState() {
         super.initState();
-        this.enabledStations = this.widget.scenario.enabledStations;
-        this.availableStations = this.widget.scenario.path;
+        this.enabledStations = new List<String>.from(this.widget.scenario.enabledStations);
+        this.availableStations = new List<String>.from(this.widget.scenario.path);
+        this.unasignedStations = this.availableStations.length-this.enabledStations.length;
+        print(this.enabledStations);
+    }
+
+    @override
+    void dispose() {
+        super.dispose();
     }
 
     Container buildEmptyBox() {
@@ -65,10 +77,15 @@ class _LinePanelState extends State<LinePanel> {
                 return false;
             },
             onAccept: (data) {
+                this.unasignedStations -= 1;
                 HapticFeedback.lightImpact();
                 this.enabledStations.add(data as String);
                 setState(() {});
                 this.widget.onDropAccept(data);
+
+                if(this.unasignedStations == 0) {
+                    this.widget.onCompleted();
+                }
             },
             onLeave: (data) {
                 this.widget.onDropLeave(data);
