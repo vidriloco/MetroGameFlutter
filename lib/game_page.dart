@@ -93,11 +93,10 @@ class _GamePageState extends State<GamePage> {
     setState(() {
       stationWidgets = <Widget>[];
     });
-    print("MIERDA");
-    print(this.mapController?.symbols.length);
+    
     this.mapController?.symbols.forEach((symbol) async {
       List<Widget> stations = this.stationWidgets;
-      print(1111);
+      
       var location = await mapController?.getSymbolLatLng(symbol);
       LatLngBounds visibleRegion = await this.mapController!.getVisibleRegion();
 

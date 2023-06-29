@@ -47,9 +47,6 @@ class _MapPageState extends State<MapPage> {
 
   GameMode currentMode = GameMode.menu;
   Level? levelSelected;
-  Scenario? scenarioSelected;
-  int scenarioIndex = 0;
-  int totalSeconds = 0;
 
   @override
   void initState() {
@@ -72,11 +69,6 @@ class _MapPageState extends State<MapPage> {
       styleString: style,
       onMapCreated: (controller) async {
         this.mapController = controller;
-        this.mapController?.addListener(() {
-          if(!this.mapController!.isCameraMoving) {
-            this.buildVisibleStations();
-          }
-        });
       },
       minMaxZoomPreference: MinMaxZoomPreference(15, 18),
       trackCameraPosition: true,
@@ -85,129 +77,6 @@ class _MapPageState extends State<MapPage> {
         target: LatLng(19.432, -99.133)
       )
     );
-  }
-
-  void buildVisibleStations() {
-    setState(() {
-      stationWidgets = <Widget>[];
-    });
-
-    this.mapController?.symbols.forEach((symbol) async {
-      List<Widget> stations = this.stationWidgets;
-
-      var location = await mapController?.getSymbolLatLng(symbol);
-      LatLngBounds visibleRegion = await this.mapController!.getVisibleRegion();
-
-      if(isLatLngWithinBounds(location!, visibleRegion.southwest, visibleRegion.northeast)) {
-        var screenPoint = await mapController?.toScreenLocation(location);
-        var offset = Offset(screenPoint!.x.toDouble()-iconWidth/2, screenPoint.y.toDouble()-iconHeight/2);
-        stations.add(this.buildDraggableStation(symbol.data?["name"], offset));
-        setState(() {
-          stationWidgets = stations;
-        });
-      }
-    });
-  }
-
-  bool isLatLngWithinBounds(LatLng point, LatLng sw, LatLng ne) {
-    // Check if the point is within the bounding box defined by the southwest
-    // and northeast corners
-    return point.latitude >= sw.latitude &&
-      point.latitude <= ne.latitude &&
-      point.longitude >= sw.longitude &&
-      point.longitude <= ne.longitude;
-  }
-
-  LinePanel? buildLinePanel() {
-
-    if(this.scenarioSelected == null) {
-      return null;
-    }
-
-    return LinePanel(
-      title: 'Linea 1',
-      scenario: this.scenarioSelected!,
-      onDropWillAccept: (data) {
-        this.feedbackEventsStream.add("will-accept");
-      },
-      onDropAccept: (data) {
-        this.feedbackEventsStream.add("did-accept");
-        this.childEventsStream.add("hide");
-      },
-      onDropLeave: (data) {
-        this.feedbackEventsStream.add("leave");
-        this.childEventsStream.add("hide");
-      },
-      onCompleted: () {
-        this.currentMode = GameMode.completed;
-      }
-    );
-  }
-
-  Widget buildStationWidget(String name) {
-    return Container(
-      width: this.iconWidth,
-      height: this.iconHeight,
-      child: Image.asset("assets/images/${name}.png")
-    );
-  }
-
-  Positioned buildDraggableStation(String station, Offset position) {
-
-    return Positioned(
-      left: position.dx,
-      top: position.dy,
-      child: Draggable(
-        data: station,
-        child: StreamBuilder(
-          initialData: "show",
-          stream: childEventsStream,
-          builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
-            return Opacity(child: buildStationWidget(station), opacity: 0);
-          },
-        ),
-        feedback: StreamBuilder(
-          initialData: "nada",
-          stream: feedbackEventsStream,
-          builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
-            String shouldPresent = snapshot.data ?? "nada";
-            
-            if (shouldPresent == "will-accept") {
-              return Opacity(child: buildStationWidget(station), opacity: 1);
-            } else {
-              return Opacity(child: buildStationWidget(station), opacity: 0.5);
-            }
-          },
-        ),
-        onDragStarted: (){ 
-          this.childEventsStream.add("hide");
-          this.lastInteractedStation = station;
-        },
-        onDragCompleted: (){
-          this.removeLastInteractedStation();
-          setState(() { });
-        },
-        onDragEnd: (details){ 
-          this.childEventsStream.add("show");
-        },
-        onDraggableCanceled: (Velocity velocity, Offset offset){
-          this.childEventsStream.add("hide");
-        },
-      ),
-    );
-  }
-
-  void removeLastInteractedStation() {
-    if(lastInteractedStation != null) {
-      this.availableStations[lastInteractedStation!] = null;
-    }
-
-    this.mapController?.symbols.forEach((symbol) async {
-      var symbolName = symbol.data?["name"];
-      if(symbolName == lastInteractedStation) {
-        this.mapController?.removeSymbol(symbol);
-      }
-    });
   }
 
   Widget buildBody(BuildContext context) {
