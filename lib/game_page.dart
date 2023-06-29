@@ -13,20 +13,21 @@ import "scenarios_list.dart";
 import "challenge_dialog.dart";
 import "timer_dialog.dart";
 import "completed_menu.dart";
-import "game_page.dart";
+import "map_page.dart";
 
-enum GameMode { menu, playing, start, paused, help, completed }
+class GamePage extends StatefulWidget {
+  const GamePage({Key? key, required this.levelSelected, required this.scenarioSelected, required this.mode}) : super(key: key);
 
-class MapPage extends StatefulWidget {
-  const MapPage({Key? key, required this.title}) : super(key: key);
-
-  final String title;
+  final Level levelSelected;
+  final Scenario scenarioSelected;
+  final GameMode mode;
 
   @override
-  State<MapPage> createState() => _MapPageState();
+  State<GamePage> createState() => _GamePageState();
 }
 
-class _MapPageState extends State<MapPage> {
+class _GamePageState extends State<GamePage> {
+  
   MapboxMapController? mapController;
   String? lastInteractedStation;
   
@@ -44,17 +45,18 @@ class _MapPageState extends State<MapPage> {
   double iconHeight = 40;
 
   Widget? mapWidget;
-
-  GameMode currentMode = GameMode.menu;
-  Level? levelSelected;
-  Scenario? scenarioSelected;
+  
   int scenarioIndex = 0;
   int totalSeconds = 0;
+
+  GameMode currentMode = GameMode.playing;
 
   @override
   void initState() {
     super.initState();
     this.mapWidget = buildMap();
+    this.scenarioIndex = this.widget.scenarioSelected.id;
+    this.currentMode = this.widget.mode;
   }
 
   @override
@@ -91,10 +93,11 @@ class _MapPageState extends State<MapPage> {
     setState(() {
       stationWidgets = <Widget>[];
     });
-
+    print("MIERDA");
+    print(this.mapController?.symbols.length);
     this.mapController?.symbols.forEach((symbol) async {
       List<Widget> stations = this.stationWidgets;
-
+      print(1111);
       var location = await mapController?.getSymbolLatLng(symbol);
       LatLngBounds visibleRegion = await this.mapController!.getVisibleRegion();
 
@@ -118,15 +121,11 @@ class _MapPageState extends State<MapPage> {
       point.longitude <= ne.longitude;
   }
 
-  LinePanel? buildLinePanel() {
-
-    if(this.scenarioSelected == null) {
-      return null;
-    }
+  LinePanel buildLinePanel() {
 
     return LinePanel(
       title: 'Linea 1',
-      scenario: this.scenarioSelected!,
+      scenario: this.widget.scenarioSelected,
       onDropWillAccept: (data) {
         this.feedbackEventsStream.add("will-accept");
       },
@@ -218,23 +217,127 @@ class _MapPageState extends State<MapPage> {
       )
     ];
 
-    widgets.add(buildChallengeMenu());
+    if(this.currentMode == GameMode.playing) {
+      var linePanel = buildLinePanel();
+      if(linePanel == null) {
+        return Stack(children: widgets);
+      }
+
+      widgets.add(linePanel);
+
+      stationWidgets.forEach((widget) {
+        widgets.add(widget);
+      });
+
+      widgets.add(buildTimerWidget());
+
+    } else if(this.currentMode == GameMode.paused || this.currentMode == GameMode.start) {
+      if(this.widget.scenarioSelected != null) {
+        
+        widgets.add(buildChallengeDialog());
+      }
+    } else if(this.currentMode == GameMode.completed) {      
+      widgets.add(buildCompletedLevelMenu());
+    } 
 
     return Stack(children: widgets);
   }
 
-  Widget buildChallengeMenu() {
-    return ChallengesMenu(
-        title: "🚇 Todos los retos", 
-        levelSelected: this.levelSelected?.id, 
-        levelAndScenarioSelected: ((level, scenario) {
-          Navigator.push(context, PageRouteBuilder(
-            pageBuilder: (_, __, ___) => GamePage(levelSelected: level, scenarioSelected: scenario, mode: GameMode.start),
+  Widget buildTimerWidget() {
+    return TimerDialog(
+      seconds: totalSeconds,
+      onTapPaused: ((seconds) {
+        setState(() {
+          currentMode = GameMode.paused;
+          totalSeconds = totalSeconds + seconds;
+        });
+      })
+    );
+  }
+
+  Widget buildCompletedLevelMenu() {
+
+    return CompletedMenu(
+      onTapRestart: () {
+        Navigator.push(context, PageRouteBuilder(
+            pageBuilder: (_, __, ___) => GamePage(levelSelected: this.widget.levelSelected, scenarioSelected: this.widget.scenarioSelected, mode: GameMode.start),
             transitionDuration: Duration(seconds: 0),
             transitionsBuilder: (_, a, __, c) => FadeTransition(opacity: a, child: c)));
-        }
-      )
+      }, 
+      
+      onTapReturn: () {
+        setState(() {
+          currentMode = GameMode.menu;
+        });
+      }, 
+      onTapNext: () {
+        setState(() {
+          scenarioIndex = this.widget.scenarioSelected.id + 1;
+          //scenarioSelected = SCENARIOS.where((i) => i.id == this.scenarioIndex).toList().first;
+          currentMode = GameMode.start;
+        });
+      });
+  }
+
+  Widget buildChallengeDialog() {
+    var firstStation = this.widget.scenarioSelected.enabledStations.first;
+    var stationData = this.availableStations[firstStation];
+
+    if(stationData?.geometry != null) {
+      var coordinate = (stationData?.geometry)!;
+      var cameraPosition = CameraPosition(
+        target: coordinate,
+        zoom: 14,
+      );
+
+      mapController?.animateCamera(
+        CameraUpdate.newCameraPosition(cameraPosition)
+      );
+    }
+
+    return ChallengeDialog(
+      mainActionTitle: this.currentMode == GameMode.start  ? "Empezar" : "Continuar",
+      scenario: this.widget.scenarioSelected, 
+      onTapReturn: (() {
+        Navigator.push(context, PageRouteBuilder(
+            pageBuilder: (_, __, ___) => MapPage(title: ""),
+            transitionDuration: Duration(seconds: 0),
+            transitionsBuilder: (_, a, __, c) => FadeTransition(opacity: a, child: c)));
+      }),
+      onTapStart: (() {
+        this.addStations();
+        setState(() {
+          currentMode = GameMode.playing;
+        });
+      })
     );
+  }
+
+  AnimatedPositioned buildAnimatedDraggableStation() {
+    return AnimatedPositioned(
+      width: 50.0,
+      height: 50.0,
+      left: dragCanceledAtOffset.dx,
+      top: dragCanceledAtOffset.dy,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.fastOutSlowIn,
+      child: buildStationWidget(lastInteractedStation!),
+      onEnd: () {
+        this.childEventsStream.add("show");
+      }
+    );
+  }
+
+  void addStations() {
+    mapController?.setSymbolIconAllowOverlap(true);
+    availableStations.forEach((name, symbolOptions) {
+      if(symbolOptions != null) {
+        mapController?.addSymbol(
+          symbolOptions,
+          { "name": name }
+        );
+      }
+    });
   }
 
   @override
@@ -243,4 +346,5 @@ class _MapPageState extends State<MapPage> {
       body: buildBody(context)
     );
   }
+
 }

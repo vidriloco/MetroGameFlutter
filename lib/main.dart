@@ -32,7 +32,7 @@ class MyApp extends StatelessWidget {
       routes: <String, WidgetBuilder> {
         '/a': (BuildContext context) => RoutesListPage(title: 'Available Routes'),
         '/b': (BuildContext context) => RoutesListPage(title: 'Nandin'),
-      },
+      },  
     );
   }
 }
