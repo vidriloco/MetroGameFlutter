@@ -41,13 +41,14 @@ class _GameScreenState extends State<GameScreen> {
   Offset dragCanceledAtOffset = Offset(20, 50);
   Offset originPositionOffset = Offset(50, 50);
 
-  double iconWidth = 40;
-  double iconHeight = 40;
-
   Widget? mapWidget;
   
   int scenarioIndex = 0;
   int totalSeconds = 0;
+
+  double iconWidth = 40;
+  double iconHeight = 40;
+
 
   GameMode currentMode = GameMode.playing;
 
@@ -142,10 +143,10 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  Widget buildStationWidget(String name) {
+  Widget buildStationWidget(String name, double dimension) {
     return Container(
-      width: this.iconWidth,
-      height: this.iconHeight,
+      width: dimension,
+      height: dimension,
       child: Image.asset("assets/images/${name}.png")
     );
   }
@@ -161,7 +162,7 @@ class _GameScreenState extends State<GameScreen> {
           initialData: "show",
           stream: childEventsStream,
           builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
-            return Opacity(child: buildStationWidget(station), opacity: 0);
+            return Opacity(child: buildStationWidget(station, 40), opacity: 0);
           },
         ),
         feedback: StreamBuilder(
@@ -171,9 +172,9 @@ class _GameScreenState extends State<GameScreen> {
             String shouldPresent = snapshot.data ?? "nada";
             
             if (shouldPresent == "will-accept") {
-              return Opacity(child: buildStationWidget(station), opacity: 1);
+              return Opacity(child: buildStationWidget(station, 100), opacity: 1);
             } else {
-              return Opacity(child: buildStationWidget(station), opacity: 0.5);
+              return Opacity(child: buildStationWidget(station, 70), opacity: 0.5);
             }
           },
         ),
@@ -321,7 +322,7 @@ class _GameScreenState extends State<GameScreen> {
       top: dragCanceledAtOffset.dy,
       duration: const Duration(milliseconds: 500),
       curve: Curves.fastOutSlowIn,
-      child: buildStationWidget(lastInteractedStation!),
+      child: buildStationWidget(lastInteractedStation!, 50),
       onEnd: () {
         this.childEventsStream.add("show");
       }
