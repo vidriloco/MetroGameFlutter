@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 
-import "map_page.dart";
+import "menu_screen.dart";
 import "routes_list_page.dart";
 
 void main() {
@@ -28,7 +28,7 @@ class MyApp extends StatelessWidget {
         // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: const MapPage(title: 'Flutter Demo Home Page'),
+      home: const MenuScreen(levelSelected: 0),
       routes: <String, WidgetBuilder> {
         '/a': (BuildContext context) => RoutesListPage(title: 'Available Routes'),
         '/b': (BuildContext context) => RoutesListPage(title: 'Nandin'),

@@ -13,20 +13,20 @@ import "scenarios_list.dart";
 import "challenge_dialog.dart";
 import "timer_dialog.dart";
 import "completed_menu.dart";
-import "map_page.dart";
+import "menu_screen.dart";
 
-class GamePage extends StatefulWidget {
-  const GamePage({Key? key, required this.levelSelected, required this.scenarioSelected, required this.mode}) : super(key: key);
+class GameScreen extends StatefulWidget {
+  const GameScreen({Key? key, required this.levelSelected, required this.scenarioSelected, required this.mode}) : super(key: key);
 
   final Level levelSelected;
   final Scenario scenarioSelected;
   final GameMode mode;
 
   @override
-  State<GamePage> createState() => _GamePageState();
+  State<GameScreen> createState() => _GameScreenState();
 }
 
-class _GamePageState extends State<GamePage> {
+class _GameScreenState extends State<GameScreen> {
   
   MapboxMapController? mapController;
   String? lastInteractedStation;
@@ -259,7 +259,7 @@ class _GamePageState extends State<GamePage> {
     return CompletedMenu(
       onTapRestart: () {
         Navigator.push(context, PageRouteBuilder(
-            pageBuilder: (_, __, ___) => GamePage(levelSelected: this.widget.levelSelected, scenarioSelected: this.widget.scenarioSelected, mode: GameMode.start),
+            pageBuilder: (_, __, ___) => GameScreen(levelSelected: this.widget.levelSelected, scenarioSelected: this.widget.scenarioSelected, mode: GameMode.start),
             transitionDuration: Duration(seconds: 0),
             transitionsBuilder: (_, a, __, c) => FadeTransition(opacity: a, child: c)));
       }, 
@@ -270,11 +270,12 @@ class _GamePageState extends State<GamePage> {
         });
       }, 
       onTapNext: () {
-        setState(() {
-          scenarioIndex = this.widget.scenarioSelected.id + 1;
-          //scenarioSelected = SCENARIOS.where((i) => i.id == this.scenarioIndex).toList().first;
-          currentMode = GameMode.start;
-        });
+        var currentScenario = this.widget.scenarioSelected;
+        var nextScenario = SCENARIOS.where((i) => i.id == currentScenario.id+1).toList().first;
+        Navigator.push(context, PageRouteBuilder(
+            pageBuilder: (_, __, ___) => GameScreen(levelSelected: this.widget.levelSelected, scenarioSelected: nextScenario, mode: GameMode.start),
+            transitionDuration: Duration(seconds: 0),
+            transitionsBuilder: (_, a, __, c) => FadeTransition(opacity: a, child: c)));
       });
   }
 
@@ -299,7 +300,7 @@ class _GamePageState extends State<GamePage> {
       scenario: this.widget.scenarioSelected, 
       onTapReturn: (() {
         Navigator.push(context, PageRouteBuilder(
-            pageBuilder: (_, __, ___) => MapPage(title: ""),
+            pageBuilder: (_, __, ___) => MenuScreen(levelSelected: 1),
             transitionDuration: Duration(seconds: 0),
             transitionsBuilder: (_, a, __, c) => FadeTransition(opacity: a, child: c)));
       }),
